@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>장비 상세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+.container{max-width:600px;margin:0 auto;padding:20px 16px 40px}
+
+/* 카드 */
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,0.08);padding:20px;margin-bottom:14px}
+
+/* 사진 카드 */
+.photo-card{padding:0;overflow:hidden;border-radius:16px;background:#1e293b}
+.photo-img{width:100%;max-height:320px;object-fit:cover;display:block}
+.photo-none{width:100%;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#475569;gap:10px;background:#f1f5f9}
+.photo-none i{font-size:48px;color:#cbd5e1}
+.photo-none p{font-size:14px;color:#94a3b8}
+
+/* 헤더 카드 */
+.header-card{display:flex;align-items:flex-start;gap:14px}
+.eq-icon{width:56px;height:56px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;flex-shrink:0}
+.eq-name{font-size:20px;font-weight:700;color:#1e293b;line-height:1.3}
+.eq-model{font-size:14px;color:#64748b;margin-top:4px}
+.eq-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+/* 배지 */
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-orange{background:#ffedd5;color:#c2410c}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+
+/* 섹션 타이틀 */
+.section-title{font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+
+/* 정보 그리드 */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.info-item label{font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.info-item .val{font-size:15px;font-weight:600;color:#1e293b;word-break:break-all}
+.info-item.full{grid-column:1/-1}
+
+/* D-Day */
+.dday-wrap{margin-bottom:16px}
+.dday-badge{display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;font-size:17px;font-weight:700;margin-bottom:12px}
+.dday-badge i{font-size:20px}
+.dday-ok{background:#dcfce7;color:#15803d}
+.dday-warn{background:#ffedd5;color:#c2410c}
+.dday-danger{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#b91c1c}
+.dday-none{background:#f1f5f9;color:#64748b}
+
+/* 진행 바 */
+.bar-wrap{background:#f1f5f9;border-radius:10px;height:12px;overflow:hidden;margin:8px 0 4px}
+.bar-fill{height:100%;border-radius:10px;transition:width 0.6s ease}
+.bar-labels{display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-top:2px}
+
+/* 버튼 */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;width:100%;margin-top:10px;transition:opacity 0.15s}
+.btn:hover{opacity:0.88}
+.btn-call{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
+.btn-edit{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
+.btn-back{background:#f1f5f9;color:#475569}
+
+/* 로딩/에러 */
+.loading{text-align:center;padding:60px 20px;color:#64748b}
+.loading i{font-size:44px;margin-bottom:16px;display:block;animation:spin 1s linear infinite;color:#3b82f6}
+.error-wrap{text-align:center;padding:60px 20px}
+.error-wrap i{font-size:44px;margin-bottom:16px;display:block;color:#ef4444}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* 이미지 라이트박스 */
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+#lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px}
+#lightbox-close{position:absolute;top:16px;right:20px;color:#fff;font-size:30px;cursor:pointer;background:none;border:none;line-height:1}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="root">
+    <div class="card loading"><i class="fas fa-spinner"></i>장비 정보 불러오는 중...</div>
+  </div>
+</div>
+
+<!-- 라이트박스 -->
+<div id="lightbox" style="display:none" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightbox-img" src="" alt="장비사진 크게보기">
+</div>
+
+<script>
+// ▼▼▼ Google Apps Script 웹앱 URL을 여기에 붙여넣으세요 ▼▼▼
+const GAS_URL = https://script.google.com/macros/library/d/1O9NtmA7ierD-kZnI1KdGnDfDwx1UcY9BCYLJBo56DFJ1XxqTBwv15732/3;
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+const params = new URLSearchParams(location.search);
+const equipId = params.get('id');
+
+function badgeClass(s){return{정상:'badge-green',수리중:'badge-orange',폐기:'badge-red',대기:'badge-gray'}[s]||'badge-gray'}
+
+function calcDday(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.floor((d-today)/86400000);
+}
+
+function openLightbox(src){
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').style.cssText = 'display:flex !important';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').style.cssText = 'display:none !important';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
+
+async function load(){
+  const root = document.getElementById('root');
+  if(!equipId){
+    root.innerHTML = `<div class="card error-wrap"><i class="fas fa-exclamation-circle"></i><p style="font-size:16px;margin-bottom:8px">장비 ID가 없습니다</p><a href="index.html" class="btn btn-back"><i class="fas fa-arrow-left"></i>목록으로</a></div>`;
+    return;
+  }
+  try{
+    const r = await fetch(GAS_URL + '?action=get&id=' + equipId);
+    if(!r.ok) throw new Error('장비를 찾을 수 없습니다 ('+r.status+')');
+    const eq = await r.json();
+    document.title = (eq.name||'장비') + ' - 장비 상세';
+    render(eq);
+  } catch(err){
+    root.innerHTML = `<div class="card error-wrap"><i class="fas fa-exclamation-circle"></i><p style="font-size:16px;margin-bottom:8px;color:#ef4444">${err.message}</p><a href="index.html" class="btn btn-back"><i class="fas fa-arrow-left"></i>목록으로</a></div>`;
+  }
+}
+
+function render(e){
+  const root = document.getElementById('root');
+  const adminURL = location.href.substring(0, location.href.lastIndexOf('/')+1) + 'index.html';
+  const dday = calcDday(e.next_calibration_date);
+
+  // ── 사진 ──
+  const photoHtml = e.photo
+    ? `<div class="card photo-card">
+        <img class="photo-img" src="${e.photo}" alt="장비사진" onclick="openLightbox('${e.photo}')" style="cursor:zoom-in" title="클릭하면 크게 볼 수 있습니다">
+       </div>`
+    : `<div class="card photo-card">
+        <div class="photo-none">
+          <i class="fas fa-camera"></i>
+          <p>등록된 사진이 없습니다</p>
+        </div>
+       </div>`;
+
+  // ── 헤더 ──
+  const headerHtml = `
+    <div class="card">
+      <div class="header-card">
+        <div class="eq-icon"><i class="fas fa-tools"></i></div>
+        <div style="flex:1;min-width:0">
+          <div class="eq-name">${e.name||'장비명 없음'}</div>
+          <div class="eq-model">${[e.model, e.manufacturer].filter(Boolean).join(' / ') || '모델 정보 없음'}</div>
+          <div class="eq-badges">
+            <span class="badge ${badgeClass(e.status)}">${e.status||'미지정'}</span>
+            ${e.equipment_id?`<span class="badge badge-blue">${e.equipment_id}</span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── D-Day ──
+  let ddayHtml = '';
+  if(dday !== null){
+    let cls='dday-none', txt='검교정 정보 없음', icon='fa-calendar';
+    if(dday < 0){cls='dday-danger'; txt=`검교정 만료! (D+${Math.abs(dday)})`; icon='fa-exclamation-triangle'}
+    else if(dday === 0){cls='dday-danger'; txt='오늘 만료!'; icon='fa-exclamation-triangle'}
+    else if(dday <= 30){cls='dday-warn'; txt=`검교정 D-${dday}`; icon='fa-clock'}
+    else if(dday <= 90){cls='dday-warn'; txt=`검교정 D-${dday}`; icon='fa-calendar-alt'}
+    else{cls='dday-ok'; txt=`검교정 D-${dday}`; icon='fa-check-circle'}
+
+    let barHtml = '';
+    if(e.calibration_date && e.next_calibration_date){
+      const start = new Date(e.calibration_date).getTime();
+      const end   = new Date(e.next_calibration_date).getTime();
+      const pct   = Math.max(0, Math.min(100, Math.round((Date.now()-start)/(end-start)*100)));
+      const barColor = dday<0?'#ef4444':dday<=30?'#f97316':dday<=90?'#eab308':'#22c55e';
+      barHtml = `
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        <div class="bar-labels"><span>검교정일: ${e.calibration_date}</span><span>차기: ${e.next_calibration_date}</span></div>
+        <div style="font-size:11px;color:#94a3b8;text-align:right;margin-top:2px">경과 ${pct}%</div>`;
+    }
+
+    ddayHtml = `
+      <div class="card">
+        <div class="section-title"><i class="fas fa-calendar-check"></i>검교정 현황</div>
+        <div class="dday-badge ${cls}"><i class="fas ${icon}"></i><span>${txt}</span></div>
+        ${barHtml}
+        <div class="info-grid" style="margin-top:14px">
+          <div class="info-item"><label>최근 검교정일</label><div class="val">${e.calibration_date||'-'}</div></div>
+          <div class="info-item"><label>차기 검교정일</label><div class="val">${e.next_calibration_date||'-'}</div></div>
+          <div class="info-item"><label>검교정 주기</label><div class="val">${e.calibration_cycle||'-'}</div></div>
+          <div class="info-item"><label>검교정 기관</label><div class="val">${e.calibration_agency||'-'}</div></div>
+        </div>
+      </div>`;
+  }
+
+  // ── 기본 정보 ──
+  const infoHtml = `
+    <div class="card">
+      <div class="section-title"><i class="fas fa-info-circle"></i>장비 정보</div>
+      <div class="info-grid">
+        <div class="info-item"><label>관리번호</label><div class="val">${e.equipment_id||'-'}</div></div>
+        <div class="info-item"><label>시리얼번호</label><div class="val">${e.serial||'-'}</div></div>
+        <div class="info-item"><label>위치 / 부서</label><div class="val">${e.location||'-'}</div></div>
+        <div class="info-item"><label>구매일</label><div class="val">${e.purchase_date||'-'}</div></div>
+        <div class="info-item"><label>모델명</label><div class="val">${e.model||'-'}</div></div>
+        <div class="info-item"><label>제조사</label><div class="val">${e.manufacturer||'-'}</div></div>
+        ${e.description?`<div class="info-item full"><label>비고</label><div class="val" style="font-weight:400;color:#475569">${e.description}</div></div>`:''}
+      </div>
+    </div>`;
+
+  // ── 담당자 ──
+  const managerHtml = `
+    <div class="card">
+      <div class="section-title"><i class="fas fa-user"></i>담당자</div>
+      <div class="info-grid">
+        <div class="info-item"><label>담당자</label><div class="val">${e.manager||'-'}</div></div>
+        <div class="info-item"><label>연락처</label><div class="val">${e.manager_contact||'-'}</div></div>
+      </div>
+      ${e.manager_contact
+        ? `<a href="tel:${e.manager_contact}" class="btn btn-call" style="margin-top:14px"><i class="fas fa-phone"></i>담당자에게 전화</a>`
+        : ''}
+    </div>`;
+
+  root.innerHTML = `
+    ${photoHtml}
+    ${headerHtml}
+    ${ddayHtml}
+    ${infoHtml}
+    ${managerHtml}
+    <a href="${adminURL}" class="btn btn-edit"><i class="fas fa-cog"></i>관리자 페이지</a>
+    <a href="${adminURL}" class="btn btn-back"><i class="fas fa-arrow-left"></i>목록으로 돌아가기</a>
+    <p style="text-align:center;font-size:12px;color:#94a3b8;margin-top:24px;padding-bottom:10px">장비 관리 시스템 © 2025</p>
+  `;
+}
+
+load();
+</script>
+</body>
+</html>
