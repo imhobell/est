@@ -207,7 +207,7 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
-
+<div id="app">
   <!-- 사이드바 -->
   <div id="sidebar">
     <div class="logo"><i class="fas fa-tools"></i>장비 관리 시스템</div>
@@ -436,7 +436,10 @@ let currentPhotoBase64 = '';
 window.addEventListener('DOMContentLoaded', async () => {
   setupDropZone();
   await loadData();
-  showPage('dashboard');
+  // 이미 인증된 경우에만 대시보드 표시
+  if (sessionStorage.getItem('adminAuth') === 'true') {
+    showPage('dashboard');
+  }
 });
 
 async function loadData() {
@@ -1267,6 +1270,8 @@ function checkPassword() {
   if (input === ADMIN_PASSWORD) {
     document.getElementById('lockScreen').style.display = 'none';
     sessionStorage.setItem('adminAuth', 'true');
+    renderDashboard();
+    showPage('dashboard');
   } else {
     errEl.style.display = 'block';
     document.getElementById('pwInput').value = '';
