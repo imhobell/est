@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>장비 관리 시스템</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+/* 레이아웃 */
+#app{display:flex;min-height:100vh}
+#sidebar{width:220px;background:#1e293b;color:#fff;flex-shrink:0;display:flex;flex-direction:column}
+#sidebar .logo{padding:20px 16px;font-size:16px;font-weight:700;border-bottom:1px solid #334155;color:#60a5fa}
+#sidebar .logo i{margin-right:8px}
+#sidebar nav{flex:1;padding:12px 0}
+#sidebar nav a{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#94a3b8;text-decoration:none;font-size:14px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.15s,color 0.15s}
+#sidebar nav a:hover{background:#334155;color:#fff}
+#sidebar nav a.active{background:#3b82f6;color:#fff}
+#sidebar nav .nav-section{padding:16px 20px 6px;font-size:11px;color:#475569;font-weight:600;letter-spacing:0.08em;text-transform:uppercase}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#topbar h1{font-size:18px;font-weight:700;color:#1e293b}
+#content{flex:1;padding:24px;overflow-y:auto}
+
+/* 페이지 - JS로만 제어 */
+.page{display:none!important}
+.page.js-visible{display:block!important}
+
+/* 카드 */
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:20px;margin-bottom:20px}
+
+/* 대시보드 통계 */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:16px}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+.stat-icon.blue{background:#3b82f6}
+.stat-icon.green{background:#22c55e}
+.stat-icon.orange{background:#f97316}
+.stat-icon.red{background:#ef4444}
+.stat-icon.purple{background:#a855f7}
+.stat-num{font-size:26px;font-weight:700;color:#1e293b}
+.stat-label{font-size:13px;color:#64748b;margin-top:2px}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.15s}
+.btn:hover{opacity:0.85}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-success{background:#22c55e;color:#fff}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-warning{background:#f97316;color:#fff}
+.btn-secondary{background:#e2e8f0;color:#475569}
+.btn-sm{padding:5px 10px;font-size:13px}
+.btn-xs{padding:3px 8px;font-size:12px}
+
+/* 툴바 */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar-right{margin-left:auto;display:flex;gap:8px}
+input[type=text],input[type=date],input[type=tel],select,textarea{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;outline:none;transition:border 0.15s}
+input[type=text]:focus,input[type=date]:focus,input[type=tel]:focus,select:focus,textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+select{background:#fff}
+
+/* 테이블 */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f8fafc;padding:11px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-orange{background:#ffedd5;color:#c2410c}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+
+/* 오버레이(다이얼로그) - 초기 숨김, JS inline style로만 제어 */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px}
+#dialog{background:#fff;border-radius:14px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.dialog-header{padding:20px 24px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
+.dialog-header h2{font-size:18px;font-weight:700}
+.dialog-body{padding:24px}
+.dialog-footer{padding:16px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px}
+.close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1}
+.close-btn:hover{color:#333}
+
+/* 폼 */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-full{grid-column:1/-1}
+.form-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:5px;display:block}
+.form-label .req{color:#ef4444;margin-left:2px}
+.form-group{margin-bottom:0}
+
+/* 사진 업로드 */
+.photo-upload-area{border:2px dashed #cbd5e1;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#f8fafc;transition:border-color 0.2s,background 0.2s;position:relative}
+.photo-upload-area:hover{border-color:#3b82f6;background:#eff6ff}
+.photo-upload-area.has-photo{border-color:#22c55e;background:#f0fdf4}
+.photo-preview{width:100%;max-height:200px;object-fit:contain;border-radius:8px;display:block;margin:0 auto}
+.photo-upload-icon{font-size:36px;color:#94a3b8;margin-bottom:8px}
+.photo-upload-text{font-size:13px;color:#64748b;margin-top:4px}
+.photo-remove-btn{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+/* 썸네일 */
+.thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0}
+.thumb-placeholder{width:40px;height:40px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:16px;border:1px solid #e2e8f0}
+
+/* QR 영역 */
+.qr-box{text-align:center;padding:20px}
+#qrTarget{display:inline-block;margin:16px auto}
+
+/* 엑셀 가져오기 */
+.drop-zone{border:2px dashed #cbd5e1;border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;background:#f8fafc;transition:border-color 0.2s,background 0.2s}
+.drop-zone.drag-over{border-color:#3b82f6;background:#eff6ff}
+.drop-zone .dz-icon{font-size:40px;color:#94a3b8;margin-bottom:12px}
+.drop-zone p{color:#64748b;font-size:14px;margin-top:6px}
+
+/* 매핑 테이블 */
+.map-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:320px;overflow-y:auto}
+.map-row{display:contents}
+.map-header{font-size:12px;font-weight:700;color:#64748b;padding:6px 0;border-bottom:1px solid #e2e8f0}
+
+/* 검교정 탭 */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid #e2e8f0;padding-bottom:0}
+.tab-btn{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:14px;color:#64748b;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500;transition:color 0.15s}
+.tab-btn.active{color:#3b82f6;border-bottom-color:#3b82f6;font-weight:700}
+.dday-ok{color:#22c55e;font-weight:700}
+.dday-warn{color:#f97316;font-weight:700}
+.dday-danger{color:#ef4444;font-weight:700}
+.dday-over{color:#94a3b8}
+
+/* QR 그리드 */
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.qr-item{background:#fff;border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+.qr-item .qr-name{font-size:13px;font-weight:600;margin-top:8px;color:#1e293b}
+.qr-item .qr-loc{font-size:12px;color:#64748b;margin-top:2px}
+
+/* 페이지네이션 */
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px}
+.page-btn{width:34px;height:34px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s}
+.page-btn:hover:not(:disabled){background:#f1f5f9}
+.page-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.page-btn:disabled{opacity:0.4;cursor:not-allowed}
+.page-info{font-size:13px;color:#64748b}
+
+/* 토스트 */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:10px;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,0.2);animation:slideIn 0.3s ease}
+.toast.success{background:#22c55e}
+.toast.error{background:#ef4444}
+.toast.info{background:#3b82f6}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* 반응형 */
+@media(max-width:768px){
+  #sidebar{width:200px;position:fixed;left:-200px;top:0;bottom:0;z-index:1000;transition:left 0.3s}
+  #sidebar.open{left:0}
+  #main{margin-left:0}
+  .form-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+}
+
+@media print{
+  #sidebar,#topbar,.toolbar,.btn,#toast-container,#overlay{display:none!important}
+  #content{padding:0}
+  .page{display:block!important}
+}
+
+.search-box{position:relative;flex:1;max-width:320px}
+.search-box input{padding-left:36px}
+.search-box i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px}
+.empty-state{text-align:center;padding:48px;color:#94a3b8}
+.empty-state i{font-size:48px;margin-bottom:12px;display:block}
+.section-title{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:16px}
+.alert-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:16px}
+.alert-box.warn{background:#fff7ed;border-color:#fed7aa}
+.alert-box h4{font-size:14px;font-weight:700;margin-bottom:6px}
+.alert-box p{font-size:13px;color:#64748b}
+</style>
+</head>
+<body>
+<!-- 비밀번호 잠금 화면 -->
+<div id="lockScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);z-index:99999;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 25px 60px rgba(0,0,0,0.4);text-align:center">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:#fff">
+      <i class="fas fa-lock"></i>
+    </div>
+    <div style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:6px">장비 관리 시스템</div>
+    <div style="font-size:14px;color:#64748b;margin-bottom:28px">관리자 전용 페이지입니다</div>
+    <div style="position:relative;margin-bottom:16px">
+      <input type="password" id="pwInput" placeholder="비밀번호를 입력하세요"
+        style="width:100%;padding:14px 48px 14px 16px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s"
+        onfocus="this.style.borderColor='#3b82f6'"
+        onblur="this.style.borderColor='#e2e8f0'"
+        onkeydown="if(event.key==='Enter')checkPassword()">
+      <button onclick="togglePw()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px"><i class="fas fa-eye" id="pwEyeIcon"></i></button>
+    </div>
+    <div id="pwError" style="color:#ef4444;font-size:13px;margin-bottom:12px;display:none"><i class="fas fa-exclamation-circle"></i> 비밀번호가 올바르지 않습니다</div>
+    <button onclick="checkPassword()"
+      style="width:100%;padding:14px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity 0.15s"
+      onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+      <i class="fas fa-sign-in-alt"></i> 로그인
+    </button>
+    <div style="margin-top:20px;padding-top:20px;border-top:1px solid #f1f5f9">
+      <a href="staff.html" style="font-size:13px;color:#64748b;text-decoration:none"><i class="fas fa-eye"></i> 직원용 조회 페이지로 이동</a>
+    </div>
+  </div>
+</div>
+
+
+  <!-- 사이드바 -->
+  <div id="sidebar">
+    <div class="logo"><i class="fas fa-tools"></i>장비 관리 시스템</div>
+    <nav>
+      <div class="nav-section">메인</div>
+      <a onclick="showPage('dashboard')" id="nav-dashboard"><i class="fas fa-chart-pie"></i>대시보드</a>
+      <div class="nav-section">장비</div>
+      <a onclick="showPage('equipment')" id="nav-equipment"><i class="fas fa-list"></i>장비 목록</a>
+      <a onclick="openAddForm()" id="nav-add"><i class="fas fa-plus-circle"></i>장비 추가</a>
+      <div class="nav-section">도구</div>
+      <a onclick="showPage('qrprint')" id="nav-qrprint"><i class="fas fa-qrcode"></i>QR 코드 인쇄</a>
+      <a onclick="showPage('import')" id="nav-import"><i class="fas fa-file-excel"></i>엑셀 가져오기</a>
+      <a onclick="exportExcel()" id="nav-export"><i class="fas fa-download"></i>엑셀 내보내기</a>
+      <a onclick="showPage('calibration')" id="nav-calibration"><i class="fas fa-calendar-check"></i>검교정 일정</a>
+    </nav>
+  </div>
+
+  <!-- 메인 -->
+  <div id="main">
+    <div id="topbar">
+      <h1 id="topbar-title">대시보드</h1>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="showPage('equipment')"><i class="fas fa-list"></i>장비 목록</button>
+        <button class="btn btn-success btn-sm" onclick="openAddForm()"><i class="fas fa-plus"></i>장비 추가</button>
+      </div>
+    </div>
+    <div id="content">
+
+      <!-- 대시보드 -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats" id="statsGrid"></div>
+        <div class="card">
+          <div class="section-title"><i class="fas fa-exclamation-triangle" style="color:#ef4444;margin-right:8px"></i>검교정 만료 예정 (30일 이내)</div>
+          <div id="urgentList"></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><i class="fas fa-clock" style="color:#f97316;margin-right:8px"></i>최근 등록 장비</div>
+          <div id="recentList"></div>
+        </div>
+      </div>
+
+      <!-- 장비 목록 -->
+      <div class="page" id="page-equipment">
+        <div class="toolbar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="장비명, 모델, S/N, 위치 검색..." oninput="filterEquipment()">
+          </div>
+          <select id="statusFilter" onchange="filterEquipment()" style="width:130px">
+            <option value="">전체 상태</option>
+            <option value="정상">정상</option>
+            <option value="수리중">수리중</option>
+            <option value="폐기">폐기</option>
+            <option value="대기">대기</option>
+          </select>
+          <select id="calibFilter" onchange="filterEquipment()" style="width:150px">
+            <option value="">전체 검교정</option>
+            <option value="expired">만료됨</option>
+            <option value="30">30일 이내</option>
+            <option value="90">90일 이내</option>
+            <option value="ok">정상</option>
+          </select>
+          <div class="toolbar-right">
+            <button class="btn btn-secondary btn-sm" onclick="showPage('import')"><i class="fas fa-file-excel"></i>엑셀 가져오기</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddForm()"><i class="fas fa-plus"></i>장비 추가</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>사진</th>
+                <th>관리번호</th>
+                <th>장비명</th>
+                <th>모델명</th>
+                <th>시리얼번호</th>
+                <th>위치/부서</th>
+                <th>담당자</th>
+                <th>차기검교정일</th>
+                <th>상태</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="equipTable"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+        <div class="page-info" id="pageInfo" style="text-align:center;margin-top:8px"></div>
+      </div>
+
+      <!-- QR 인쇄 -->
+      <div class="page" id="page-qrprint">
+        <div class="toolbar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="qrSearch" placeholder="장비 검색..." oninput="filterQR()">
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="printAllQR()"><i class="fas fa-print"></i>선택 QR 인쇄</button>
+          </div>
+        </div>
+        <div class="qr-grid" id="qrGrid"></div>
+      </div>
+
+      <!-- 엑셀 가져오기 -->
+      <div class="page" id="page-import">
+        <div class="card">
+          <div class="section-title"><i class="fas fa-file-excel" style="color:#22c55e;margin-right:8px"></i>엑셀 파일 가져오기</div>
+          <div class="alert-box warn">
+            <h4>📋 형식 안내</h4>
+            <p>첫 행: 헤더(장비명, 모델명, 시리얼번호, 위치, 담당자, 차기검교정일 등)<br>
+            지원 형식: .xlsx, .xls, .csv</p>
+          </div>
+          <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+            <div class="dz-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <strong>클릭하거나 파일을 이곳에 드래그하세요</strong>
+            <p>Excel (.xlsx, .xls) 또는 CSV 파일</p>
+          </div>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(this)">
+          <div id="importResult" style="display:none;margin-top:20px">
+            <p id="importStatus" style="margin-bottom:12px;font-weight:600;color:#22c55e"></p>
+            <div id="previewWrap"></div>
+            <div id="mapWrap" style="margin-top:20px"></div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+              <button class="btn btn-secondary" onclick="resetImport()"><i class="fas fa-redo"></i>다시 선택</button>
+              <button class="btn btn-primary" id="doImportBtn" onclick="doImport()"><i class="fas fa-file-import"></i>가져오기 실행</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 검교정 일정 -->
+      <div class="page" id="page-calibration">
+        <div class="tabs">
+          <button class="tab-btn active" id="ctab-all" onclick="setCalibTab('all')">전체</button>
+          <button class="tab-btn" id="ctab-expired" onclick="setCalibTab('expired')"><span style="color:#ef4444">●</span> 만료됨</button>
+          <button class="tab-btn" id="ctab-30" onclick="setCalibTab('30')"><span style="color:#f97316">●</span> 30일 이내</button>
+          <button class="tab-btn" id="ctab-90" onclick="setCalibTab('90')"><span style="color:#eab308">●</span> 90일 이내</button>
+          <button class="tab-btn" id="ctab-ok" onclick="setCalibTab('ok')"><span style="color:#22c55e">●</span> 정상</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>관리번호</th>
+                <th>장비명</th>
+                <th>위치</th>
+                <th>최근검교정일</th>
+                <th>차기검교정일</th>
+                <th>주기</th>
+                <th>기관</th>
+                <th>D-Day</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="calibTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- 오버레이 (장비 추가/수정, QR 보기, 삭제 확인) -->
+<div id="overlay" onclick="overlayClickClose(event)">
+  <div id="dialog">
+    <div class="dialog-header">
+      <h2 id="dialogTitle">제목</h2>
+      <button class="close-btn" onclick="closeDialog()">×</button>
+    </div>
+    <div class="dialog-body" id="dialogBody"></div>
+    <div class="dialog-footer" id="dialogFooter"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ============================================================
+// 설정
+// ============================================================
+// ▼▼▼ Google Apps Script 웹앱 URL을 여기에 붙여넣으세요 ▼▼▼
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyXQj-dGwQ0sAFBnywbfbitwEGDyR2LrwjsKCtYN3aZ9M4YqC4HC_fTOyg6n165FMbKXQ/exec';
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+const DETAIL_URL = (() => {
+  const u = location.href;
+  return u.substring(0, u.lastIndexOf('/') + 1) + 'view.html';
+})();
+
+// GAS API 헬퍼 (모두 GET 방식 - CORS 문제 해결)
+async function gasCall(params) {
+  const url = GAS_URL + '?' + new URLSearchParams(params);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('API 오류: ' + r.status);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  return j;
+}
+async function gasPost(body) {
+  // POST 대신 GET으로 처리 (CORS 우회)
+  const params = { action: body.action };
+  if (body.id) params.id = body.id;
+  if (body.data) params.data = encodeURIComponent(JSON.stringify(body.data));
+  return await gasCall(params);
+}
+
+// ============================================================
+// 상태
+// ============================================================
+let allData = [];
+let filtered = [];
+let curPage = 1;
+const PER_PAGE = 20;
+let importRows = [];
+let importHeaders = [];
+let calibTab = 'all';
+let currentEditId = null;
+let qrInstances = {};
+let currentPhotoBase64 = '';
+
+// ============================================================
+// 초기화
+// ============================================================
+window.addEventListener('DOMContentLoaded', async () => {
+  setupDropZone();
+  await loadData();
+  showPage('dashboard');
+});
+
+async function loadData() {
+  try {
+    const j = await gasCall({ action: 'list' });
+    allData = j.data || [];
+    filtered = [...allData];
+  } catch(e) {
+    toast('데이터 로드 실패: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// 페이지 전환
+// ============================================================
+const PAGE_TITLES = {
+  dashboard: '대시보드',
+  equipment: '장비 목록',
+  qrprint: 'QR 코드 인쇄',
+  import: '엑셀 가져오기',
+  calibration: '검교정 일정'
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.style.setProperty('display','none','important'));
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
+  const pg = document.getElementById('page-' + name);
+  if(pg) pg.style.setProperty('display','block','important');
+  const nav = document.getElementById('nav-' + name);
+  if(nav) nav.classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[name] || name;
+
+  if(name === 'dashboard') renderDashboard();
+  if(name === 'equipment') { filterEquipment(); }
+  if(name === 'qrprint') renderQRGrid();
+  if(name === 'calibration') renderCalib();
+}
+
+// ============================================================
+// 대시보드
+// ============================================================
+function renderDashboard() {
+  const total = allData.length;
+  const normal = allData.filter(e=>e.status==='정상').length;
+  const repair = allData.filter(e=>e.status==='수리중').length;
+  const discard = allData.filter(e=>e.status==='폐기').length;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const urgent = allData.filter(e=>{
+    if(!e.next_calibration_date) return false;
+    const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+    const diff = Math.floor((d-today)/86400000);
+    return diff <= 30;
+  });
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-tools"></i></div><div><div class="stat-num">${total}</div><div class="stat-label">전체 장비</div></div></div>
+    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div><div class="stat-num">${normal}</div><div class="stat-label">정상</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-wrench"></i></div><div><div class="stat-num">${repair}</div><div class="stat-label">수리중</div></div></div>
+    <div class="stat-card"><div class="stat-icon red"><i class="fas fa-trash"></i></div><div><div class="stat-num">${discard}</div><div class="stat-label">폐기</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-exclamation-triangle"></i></div><div><div class="stat-num">${urgent.length}</div><div class="stat-label">검교정 30일 이내</div></div></div>
+  `;
+
+  const uEl = document.getElementById('urgentList');
+  if(urgent.length === 0) {
+    uEl.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>30일 이내 만료 예정 장비 없음</p></div>';
+  } else {
+    uEl.innerHTML = `<div class="table-wrap"><table><thead><tr><th>장비명</th><th>위치</th><th>차기검교정일</th><th>D-Day</th></tr></thead><tbody>
+    ${urgent.sort((a,b)=>new Date(a.next_calibration_date)-new Date(b.next_calibration_date)).map(e=>{
+      const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+      const diff = Math.floor((d-today)/86400000);
+      const cls = diff<0?'dday-danger':diff<=7?'dday-danger':diff<=30?'dday-warn':'dday-ok';
+      const txt = diff<0?`D+${Math.abs(diff)}`:diff===0?'D-Day':`D-${diff}`;
+      return `<tr><td>${e.name||'-'}</td><td>${e.location||'-'}</td><td>${e.next_calibration_date||'-'}</td><td class="${cls}">${txt}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }
+
+  const recent = [...allData].sort((a,b)=>(b.created_at||0)-(a.created_at||0)).slice(0,5);
+  document.getElementById('recentList').innerHTML = `<div class="table-wrap"><table><thead><tr><th>장비명</th><th>모델</th><th>위치</th><th>상태</th></tr></thead><tbody>
+  ${recent.map(e=>`<tr><td>${e.name||'-'}</td><td>${e.model||'-'}</td><td>${e.location||'-'}</td><td>${badgeHTML(e.status)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+// ============================================================
+// 장비 목록
+// ============================================================
+function filterEquipment() {
+  const kw = (document.getElementById('searchInput').value||'').toLowerCase();
+  const st = document.getElementById('statusFilter').value;
+  const cf = document.getElementById('calibFilter').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  filtered = allData.filter(e => {
+    const matchKw = !kw || [e.name,e.model,e.serial,e.location,e.equipment_id].some(v=>(v||'').toLowerCase().includes(kw));
+    const matchSt = !st || e.status === st;
+    let matchCf = true;
+    if(cf && e.next_calibration_date) {
+      const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+      const diff = Math.floor((d-today)/86400000);
+      if(cf==='expired') matchCf = diff < 0;
+      else if(cf==='30') matchCf = diff >= 0 && diff <= 30;
+      else if(cf==='90') matchCf = diff >= 0 && diff <= 90;
+      else if(cf==='ok') matchCf = diff > 90;
+    } else if(cf) matchCf = !e.next_calibration_date;
+    return matchKw && matchSt && matchCf;
+  });
+
+  curPage = 1;
+  renderTable();
+}
+
+function renderTable() {
+  const start = (curPage-1)*PER_PAGE;
+  const slice = filtered.slice(start, start+PER_PAGE);
+  const tbody = document.getElementById('equipTable');
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  if(filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state"><i class="fas fa-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>장비가 없습니다</td></tr>`;
+  } else {
+    tbody.innerHTML = slice.map(e => {
+      let ddayHtml = '-';
+      if(e.next_calibration_date) {
+        const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+        const diff = Math.floor((d-today)/86400000);
+        const cls = diff<0?'dday-danger':diff<=30?'dday-warn':'dday-ok';
+        const txt = diff<0?`만료 D+${Math.abs(diff)}`:diff===0?'D-Day':`D-${diff}`;
+        ddayHtml = `<span class="${cls}">${e.next_calibration_date}<br><small>${txt}</small></span>`;
+      }
+      const thumbHtml = e.photo
+        ? `<img class="thumb" src="${e.photo}" alt="장비사진">`
+        : `<div class="thumb-placeholder"><i class="fas fa-camera"></i></div>`;
+      return `<tr>
+        <td>${thumbHtml}</td>
+        <td>${e.equipment_id||'-'}</td>
+        <td><strong>${e.name||'-'}</strong></td>
+        <td>${e.model||'-'}</td>
+        <td>${e.serial||'-'}</td>
+        <td>${e.location||'-'}</td>
+        <td>${e.manager||'-'}</td>
+        <td>${ddayHtml}</td>
+        <td>${badgeHTML(e.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-xs" onclick="openEditForm('${e.id}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-primary btn-xs" onclick="openQR('${e.id}')"><i class="fas fa-qrcode"></i></button>
+          <button class="btn btn-danger btn-xs" onclick="confirmDelete('${e.id}')"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  renderPagination();
+  document.getElementById('pageInfo').textContent = `총 ${filtered.length}개 장비`;
+}
+
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PER_PAGE);
+  const pg = document.getElementById('pagination');
+  if(total <= 1) { pg.innerHTML=''; return; }
+  let h = `<button class="page-btn" onclick="goPage(${curPage-1})" ${curPage<=1?'disabled':''}><i class="fas fa-chevron-left"></i></button>`;
+  const start = Math.max(1, curPage-2);
+  const end = Math.min(total, curPage+2);
+  if(start > 1) h += `<button class="page-btn" onclick="goPage(1)">1</button>${start>2?'<span>…</span>':''}`;
+  for(let i=start;i<=end;i++) h += `<button class="page-btn ${i===curPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(end < total) h += `${end<total-1?'<span>…</span>':''}<button class="page-btn" onclick="goPage(${total})">${total}</button>`;
+  h += `<button class="page-btn" onclick="goPage(${curPage+1})" ${curPage>=total?'disabled':''}><i class="fas fa-chevron-right"></i></button>`;
+  pg.innerHTML = h;
+}
+
+function goPage(n) {
+  const total = Math.ceil(filtered.length / PER_PAGE);
+  curPage = Math.max(1, Math.min(n, total));
+  renderTable();
+}
+
+function badgeHTML(status) {
+  const map = { '정상':'badge-green','수리중':'badge-orange','폐기':'badge-red','대기':'badge-gray' };
+  return `<span class="badge ${map[status]||'badge-gray'}">${status||'미지정'}</span>`;
+}
+
+// ============================================================
+// 장비 추가/수정 폼 (다이얼로그)
+// ============================================================
+function openAddForm() {
+  currentEditId = null;
+  currentPhotoBase64 = '';
+  showDialog('장비 추가', buildEquipForm(null), `
+    <button class="btn btn-secondary" onclick="closeDialog()">취소</button>
+    <button class="btn btn-primary" onclick="saveEquipment()"><i class="fas fa-save"></i> 저장</button>
+  `);
+}
+
+async function openEditForm(id) {
+  const eq = allData.find(e => e.id === id);
+  if(!eq) { toast('장비를 찾을 수 없습니다','error'); return; }
+  currentEditId = id;
+  currentPhotoBase64 = eq.photo || '';
+  showDialog('장비 수정', buildEquipForm(eq), `
+    <button class="btn btn-secondary" onclick="closeDialog()">취소</button>
+    <button class="btn btn-primary" onclick="saveEquipment()"><i class="fas fa-save"></i> 저장</button>
+  `);
+}
+
+function buildEquipForm(eq) {
+  const v = (k) => (eq&&eq[k])||'';
+  const photoHtml = v('photo')
+    ? `<img class="photo-preview" src="${v('photo')}" alt="장비사진">
+       <button type="button" class="photo-remove-btn" onclick="removePhoto()" title="사진 삭제">×</button>`
+    : `<div class="photo-upload-icon"><i class="fas fa-camera"></i></div>
+       <div style="font-weight:600;color:#374151;font-size:14px">사진 추가</div>
+       <div class="photo-upload-text">클릭하거나 드래그하여 업로드<br>JPG, PNG, GIF (최대 5MB)</div>`;
+  return `
+  <div class="form-grid">
+    <div class="form-group form-full">
+      <label class="form-label"><i class="fas fa-camera" style="margin-right:4px"></i>장비 사진</label>
+      <div class="photo-upload-area ${v('photo')?'has-photo':''}" id="photoArea" onclick="triggerPhotoInput()" ondragover="photoDragOver(event)" ondragleave="photoDragLeave()" ondrop="photoDrop(event)">
+        <div id="photoContent">${photoHtml}</div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(this)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">관리번호</label>
+      <input type="text" id="f_equipment_id" value="${v('equipment_id')}" placeholder="EQ-001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">상태</label>
+      <select id="f_status">
+        ${['정상','수리중','폐기','대기'].map(s=>`<option ${v('status')===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group form-full">
+      <label class="form-label">장비명 <span class="req">*</span></label>
+      <input type="text" id="f_name" value="${v('name')}" placeholder="예: 디지털 멀티미터">
+    </div>
+    <div class="form-group">
+      <label class="form-label">모델명</label>
+      <input type="text" id="f_model" value="${v('model')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">제조사</label>
+      <input type="text" id="f_manufacturer" value="${v('manufacturer')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">시리얼번호</label>
+      <input type="text" id="f_serial" value="${v('serial')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">위치/부서</label>
+      <input type="text" id="f_location" value="${v('location')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">담당자</label>
+      <input type="text" id="f_manager" value="${v('manager')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">담당자 연락처</label>
+      <input type="tel" id="f_manager_contact" value="${v('manager_contact')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">구매일</label>
+      <input type="date" id="f_purchase_date" value="${v('purchase_date')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">최근 검교정일</label>
+      <input type="date" id="f_calibration_date" value="${v('calibration_date')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">차기 검교정일</label>
+      <input type="date" id="f_next_calibration_date" value="${v('next_calibration_date')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">검교정 주기</label>
+      <input type="text" id="f_calibration_cycle" value="${v('calibration_cycle')}" placeholder="1년">
+    </div>
+    <div class="form-group">
+      <label class="form-label">검교정 기관</label>
+      <input type="text" id="f_calibration_agency" value="${v('calibration_agency')}">
+    </div>
+    <div class="form-group form-full">
+      <label class="form-label">비고</label>
+      <textarea id="f_description" rows="3" style="resize:vertical">${v('description')}</textarea>
+    </div>
+  </div>`;
+}
+
+function getFormData() {
+  const g = id => (document.getElementById(id)||{}).value || '';
+  return {
+    equipment_id: g('f_equipment_id'),
+    name: g('f_name'),
+    model: g('f_model'),
+    manufacturer: g('f_manufacturer'),
+    serial: g('f_serial'),
+    location: g('f_location'),
+    manager: g('f_manager'),
+    manager_contact: g('f_manager_contact'),
+    purchase_date: g('f_purchase_date'),
+    calibration_date: g('f_calibration_date'),
+    next_calibration_date: g('f_next_calibration_date'),
+    calibration_cycle: g('f_calibration_cycle'),
+    calibration_agency: g('f_calibration_agency'),
+    status: g('f_status') || '정상',
+    description: g('f_description'),
+    photo: currentPhotoBase64 || ''
+  };
+}
+
+async function saveEquipment() {
+  const data = getFormData();
+  if(!data.name.trim()) { toast('장비명을 입력하세요','error'); return; }
+  try {
+    let saved;
+    if(currentEditId) {
+      saved = await gasPost({ action: 'update', id: currentEditId, data });
+    } else {
+      saved = await gasPost({ action: 'create', data });
+    }
+    if(currentEditId) {
+      const idx = allData.findIndex(e=>e.id===currentEditId);
+      if(idx>=0) allData[idx] = saved;
+    } else {
+      allData.unshift(saved);
+    }
+    filtered = [...allData];
+    closeDialog();
+    toast(currentEditId?'장비가 수정되었습니다':'장비가 추가되었습니다','success');
+    filterEquipment();
+    renderDashboard();
+  } catch(e) {
+    toast('저장 실패: '+e.message,'error');
+  }
+}
+
+// ============================================================
+// 사진 업로드
+// ============================================================
+function triggerPhotoInput() {
+  const inp = document.getElementById('photoInput');
+  if(inp) inp.click();
+}
+
+function handlePhotoSelect(input) {
+  if(input.files && input.files[0]) loadPhotoFile(input.files[0]);
+}
+
+function photoDragOver(e) {
+  e.preventDefault();
+  const area = document.getElementById('photoArea');
+  if(area) area.style.borderColor = '#3b82f6';
+}
+
+function photoDragLeave() {
+  const area = document.getElementById('photoArea');
+  if(area) area.style.borderColor = '';
+}
+
+function photoDrop(e) {
+  e.preventDefault();
+  photoDragLeave();
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadPhotoFile(file);
+  else toast('이미지 파일만 업로드 가능합니다','error');
+}
+
+function loadPhotoFile(file) {
+  if(file.size > 5 * 1024 * 1024) { toast('파일 크기는 5MB 이하여야 합니다','error'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // 이미지 리사이즈 (최대 800px, 품질 0.8)
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX || h > MAX) {
+        if(w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+      updatePhotoPreview(currentPhotoBase64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updatePhotoPreview(src) {
+  const area = document.getElementById('photoArea');
+  const content = document.getElementById('photoContent');
+  if(!area || !content) return;
+  area.classList.add('has-photo');
+  content.innerHTML = `
+    <img class="photo-preview" src="${src}" alt="장비사진">
+    <button type="button" class="photo-remove-btn" onclick="removePhoto(event)" title="사진 삭제">×</button>
+  `;
+}
+
+function removePhoto(e) {
+  if(e) e.stopPropagation();
+  currentPhotoBase64 = '';
+  const area = document.getElementById('photoArea');
+  const content = document.getElementById('photoContent');
+  if(!area || !content) return;
+  area.classList.remove('has-photo');
+  area.style.borderColor = '';
+  content.innerHTML = `
+    <div class="photo-upload-icon"><i class="fas fa-camera"></i></div>
+    <div style="font-weight:600;color:#374151;font-size:14px">사진 추가</div>
+    <div class="photo-upload-text">클릭하거나 드래그하여 업로드<br>JPG, PNG, GIF (최대 5MB)</div>
+  `;
+  const inp = document.getElementById('photoInput');
+  if(inp) inp.value = '';
+}
+
+// ============================================================
+// QR 코드
+// ============================================================
+function openQR(id) {
+  const eq = allData.find(e=>e.id===id);
+  if(!eq) return;
+  const url = DETAIL_URL + '?id=' + id;
+  showDialog(`QR 코드 - ${eq.name}`,
+    `<div class="qr-box">
+      <p style="margin-bottom:12px;color:#64748b">스캔 시 장비 상세 페이지로 이동합니다</p>
+      <div id="qrTarget"></div>
+      <p style="margin-top:12px;font-size:12px;color:#94a3b8;word-break:break-all">${url}</p>
+      <p style="margin-top:8px;font-weight:600">${eq.name} ${eq.model?'/ '+eq.model:''}</p>
+      <p style="color:#64748b;font-size:13px">${eq.location||''}</p>
+    </div>`,
+    `<button class="btn btn-secondary" onclick="closeDialog()">닫기</button>
+     <button class="btn btn-primary" onclick="downloadQR()"><i class="fas fa-download"></i> PNG 저장</button>
+     <button class="btn btn-success" onclick="printQR()"><i class="fas fa-print"></i> 인쇄</button>`
+  );
+  setTimeout(() => {
+    const target = document.getElementById('qrTarget');
+    if(!target) return;
+    target.innerHTML = '';
+    try {
+      new QRCode(target, { text: url, width:200, height:200, correctLevel: QRCode.CorrectLevel.M });
+    } catch(e) { target.innerHTML = `<p style="color:red">QR 생성 실패: ${e.message}</p>`; }
+  }, 100);
+}
+
+function downloadQR() {
+  const canvas = document.querySelector('#qrTarget canvas');
+  if(!canvas) { toast('QR 코드를 먼저 생성하세요','error'); return; }
+  const a = document.createElement('a');
+  a.download = 'qr.png';
+  a.href = canvas.toDataURL();
+  a.click();
+}
+
+function printQR() {
+  const canvas = document.querySelector('#qrTarget canvas');
+  if(!canvas) { toast('QR 코드를 먼저 생성하세요','error'); return; }
+  const w = window.open('','_blank','width=400,height=500');
+  w.document.write(`<html><body style="text-align:center;font-family:sans-serif;padding:20px">
+    <img src="${canvas.toDataURL()}" style="width:200px;height:200px"><br>
+    <p style="font-size:14px;margin-top:8px">${document.getElementById('dialogTitle').textContent.replace('QR 코드 - ','')}</p>
+    <script>window.onload=()=>{window.print();window.close()}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ============================================================
+// QR 그리드 인쇄 페이지
+// ============================================================
+function renderQRGrid() {
+  const kw = (document.getElementById('qrSearch').value||'').toLowerCase();
+  const list = kw ? allData.filter(e=>[e.name,e.model,e.location].some(v=>(v||'').toLowerCase().includes(kw))) : allData;
+  const grid = document.getElementById('qrGrid');
+  if(list.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="fas fa-qrcode"></i><p>장비가 없습니다</p></div>';
+    return;
+  }
+  grid.innerHTML = list.map(e=>`
+    <div class="qr-item" id="qri-${e.id}">
+      <div id="qrc-${e.id}" style="display:inline-block"></div>
+      <div class="qr-name">${e.name||'-'}</div>
+      <div class="qr-loc">${e.location||''}</div>
+      <div style="margin-top:8px">
+        <button class="btn btn-secondary btn-xs" onclick="openQR('${e.id}')"><i class="fas fa-expand"></i></button>
+      </div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    list.forEach(e => {
+      const target = document.getElementById('qrc-'+e.id);
+      if(!target) return;
+      try {
+        new QRCode(target, {
+          text: DETAIL_URL + '?id=' + e.id,
+          width:120, height:120, correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch(err) { /* ignore */ }
+    });
+  }, 150);
+}
+
+function filterQR() { renderQRGrid(); }
+
+function printAllQR() {
+  const items = document.querySelectorAll('.qr-item');
+  if(items.length === 0) { toast('QR 항목이 없습니다','error'); return; }
+  const w = window.open('','_blank','width=900,height=700');
+  let html = '<html><head><style>body{font-family:sans-serif}';
+  html += '.grid{display:flex;flex-wrap:wrap;gap:8px}.item{width:160px;text-align:center;border:1px solid #ddd;padding:8px;border-radius:6px}';
+  html += '.name{font-size:11px;font-weight:bold;margin-top:4px}.loc{font-size:10px;color:#666}</style></head><body><div class="grid">';
+  items.forEach(el => {
+    const canvas = el.querySelector('canvas');
+    const name = el.querySelector('.qr-name')?.textContent||'';
+    const loc = el.querySelector('.qr-loc')?.textContent||'';
+    if(canvas) html += `<div class="item"><img src="${canvas.toDataURL()}" width="120" height="120"><div class="name">${name}</div><div class="loc">${loc}</div></div>`;
+  });
+  html += '</div><script>window.onload=()=>{window.print();window.close()}<\/script></body></html>';
+  w.document.write(html);
+  w.document.close();
+}
+
+// ============================================================
+// 삭제
+// ============================================================
+function confirmDelete(id) {
+  const eq = allData.find(e=>e.id===id);
+  if(!eq) return;
+  showDialog('장비 삭제 확인',
+    `<div style="text-align:center;padding:10px">
+      <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;margin-bottom:16px;display:block"></i>
+      <p style="font-size:16px;margin-bottom:8px"><strong>${eq.name||'장비'}</strong>을(를) 삭제하시겠습니까?</p>
+      <p style="color:#64748b;font-size:14px">삭제된 데이터는 복구할 수 없습니다.</p>
+    </div>`,
+    `<button class="btn btn-secondary" onclick="closeDialog()">취소</button>
+     <button class="btn btn-danger" onclick="deleteEquipment('${id}')"><i class="fas fa-trash"></i> 삭제</button>`
+  );
+}
+
+async function deleteEquipment(id) {
+  try {
+    await gasPost({ action: 'delete', id });
+    allData = allData.filter(e=>e.id!==id);
+    filtered = filtered.filter(e=>e.id!==id);
+    closeDialog();
+    toast('장비가 삭제되었습니다','success');
+    renderTable();
+    renderDashboard();
+  } catch(e) {
+    toast('삭제 실패: '+e.message,'error');
+  }
+}
+
+// ============================================================
+// 엑셀 가져오기
+// ============================================================
+function setupDropZone() {
+  const dz = document.getElementById('dropZone');
+  if(!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if(file) processFile(file);
+  });
+}
+
+function triggerFileInput() {
+  document.getElementById('fileInput').click();
+}
+
+function handleFileSelect(input) {
+  if(input.files && input.files[0]) processFile(input.files[0]);
+}
+
+function processFile(file) {
+  if(!window.XLSX) { toast('XLSX 라이브러리가 로드되지 않았습니다. 페이지를 새로고침 해주세요.','error'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const arr = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(arr.length < 2) { toast('데이터가 없습니다 (최소 헤더+1행 필요)','error'); return; }
+      importHeaders = arr[0].map(h=>String(h).trim());
+      importRows = arr.slice(1).filter(row=>row.some(c=>c!==''));
+      renderImportPreview();
+    } catch(err) {
+      toast('파일 읽기 실패: '+err.message,'error');
+    }
+  };
+  reader.onerror = () => toast('파일 읽기 오류','error');
+  reader.readAsArrayBuffer(file);
+}
+
+const FIELD_MAP = [
+  {key:'equipment_id',label:'관리번호'},
+  {key:'name',label:'장비명'},
+  {key:'model',label:'모델명'},
+  {key:'manufacturer',label:'제조사'},
+  {key:'serial',label:'시리얼번호'},
+  {key:'location',label:'위치/부서'},
+  {key:'manager',label:'담당자'},
+  {key:'manager_contact',label:'담당자 연락처'},
+  {key:'calibration_date',label:'최근검교정일'},
+  {key:'next_calibration_date',label:'차기검교정일'},
+  {key:'calibration_cycle',label:'검교정주기'},
+  {key:'calibration_agency',label:'검교정기관'},
+  {key:'status',label:'상태'},
+  {key:'purchase_date',label:'구매일'},
+  {key:'description',label:'비고'},
+];
+
+function autoMap(header) {
+  const h = header.toLowerCase().replace(/[\s_\-]/g,'');
+  const rules = {
+    name:['장비명','설비명','기기명','equipmentname','name'],
+    model:['모델','모델명','model'],
+    manufacturer:['제조사','제조','maker','manufacturer'],
+    serial:['시리얼','시리얼번호','sn','serialnumber','serial'],
+    location:['위치','부서','설치위치','location','dept'],
+    manager:['담당자','관리자','manager','person'],
+    manager_contact:['연락처','전화','담당자연락처','contact','phone','tel'],
+    calibration_date:['최근검교정','검교정일','최근검교정일','calibrationdate','lastcalib'],
+    next_calibration_date:['차기검교정','다음검교정','차기검교정일','nextcalib','nextcalibrationdate'],
+    calibration_cycle:['주기','검교정주기','cycle'],
+    calibration_agency:['기관','검교정기관','agency'],
+    status:['상태','status'],
+    purchase_date:['구매일','구입일','purchasedate'],
+    equipment_id:['관리번호','id','equipment_id','관리id'],
+    description:['비고','설명','note','description','remark'],
+  };
+  for(const [key,patterns] of Object.entries(rules)) {
+    if(patterns.some(p=>h.includes(p))) return key;
+  }
+  return '';
+}
+
+function renderImportPreview() {
+  document.getElementById('importResult').style.display = 'block';
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('importStatus').textContent = `✅ 파일 읽기 완료: ${importRows.length}개 행 감지됨`;
+
+  // 미리보기 테이블
+  const preview = importRows.slice(0,5);
+  let tbl = `<div class="table-wrap" style="margin-bottom:8px"><table><thead><tr>${importHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+  preview.forEach(row => { tbl += `<tr>${importHeaders.map((_,i)=>`<td>${row[i]||''}</td>`).join('')}</tr>`; });
+  tbl += `</tbody></table></div><p style="font-size:12px;color:#64748b">미리보기: 최대 5행 표시</p>`;
+  document.getElementById('previewWrap').innerHTML = tbl;
+
+  // 컬럼 매핑
+  const opts = `<option value="">-- 무시 --</option>` + FIELD_MAP.map(f=>`<option value="${f.key}">${f.label}</option>`).join('');
+  let mapHtml = `<div class="section-title" style="margin-bottom:12px">컬럼 매핑</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+  importHeaders.forEach((h,i) => {
+    const auto = autoMap(h);
+    mapHtml += `<div style="display:flex;align-items:center;gap:8px;padding:6px;background:#f8fafc;border-radius:6px;font-size:13px">
+      <span style="flex:0 0 auto;font-weight:600;color:#374151">${h}</span>
+      <i class="fas fa-arrow-right" style="color:#94a3b8;flex:0 0 auto"></i>
+      <select id="map_${i}" style="flex:1;padding:5px 8px;font-size:13px">
+        ${opts.replace(`value="${auto}"`,`value="${auto}" selected`)}
+      </select>
+    </div>`;
+  });
+  mapHtml += '</div>';
+  document.getElementById('mapWrap').innerHTML = mapHtml;
+}
+
+function resetImport() {
+  importRows = [];
+  importHeaders = [];
+  document.getElementById('importResult').style.display = 'none';
+  document.getElementById('dropZone').style.display = '';
+  document.getElementById('fileInput').value = '';
+}
+
+async function doImport() {
+  if(importRows.length === 0) { toast('가져올 데이터가 없습니다','error'); return; }
+  const mapping = {};
+  importHeaders.forEach((_,i) => {
+    const sel = document.getElementById('map_'+i);
+    if(sel && sel.value) mapping[i] = sel.value;
+  });
+
+  let success = 0, fail = 0;
+  const btn = document.getElementById('doImportBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 가져오는 중...';
+
+  for(const row of importRows) {
+    const data = { status:'정상' };
+    Object.entries(mapping).forEach(([i,key]) => {
+      let val = String(row[parseInt(i)]||'').trim();
+      if(val) data[key] = val;
+    });
+    if(!data.name) { fail++; continue; }
+    try {
+      const saved = await gasPost({ action: 'create', data });
+      allData.unshift(saved);
+      success++;
+    } catch(e) { fail++; }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-file-import"></i> 가져오기 실행';
+  filtered = [...allData];
+  toast(`가져오기 완료: 성공 ${success}개${fail?`, 실패 ${fail}개`:''}`, success>0?'success':'error');
+  resetImport();
+  showPage('equipment');
+  filterEquipment();
+}
+
+// ============================================================
+// 엑셀 내보내기
+// ============================================================
+function exportExcel() {
+  if(!window.XLSX) { toast('XLSX 라이브러리 미로드','error'); return; }
+  if(allData.length === 0) { toast('내보낼 데이터가 없습니다','error'); return; }
+  const headers = ['관리번호','장비명','모델명','제조사','시리얼번호','위치/부서','담당자','담당자연락처','최근검교정일','차기검교정일','검교정주기','검교정기관','상태','구매일','비고'];
+  const keys = ['equipment_id','name','model','manufacturer','serial','location','manager','manager_contact','calibration_date','next_calibration_date','calibration_cycle','calibration_agency','status','purchase_date','description'];
+  const data = [headers, ...allData.map(e=>keys.map(k=>e[k]||''))];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '장비목록');
+  XLSX.writeFile(wb, `장비목록_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`${allData.length}개 장비 내보내기 완료`,'success');
+}
+
+// ============================================================
+// 검교정 일정
+// ============================================================
+function setCalibTab(tab) {
+  calibTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ctab-'+tab)?.classList.add('active');
+  renderCalib();
+}
+
+function renderCalib() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  let list = allData.filter(e => {
+    if(!e.next_calibration_date) return calibTab === 'all';
+    const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+    const diff = Math.floor((d-today)/86400000);
+    if(calibTab==='all') return true;
+    if(calibTab==='expired') return diff < 0;
+    if(calibTab==='30') return diff >= 0 && diff <= 30;
+    if(calibTab==='90') return diff > 30 && diff <= 90;
+    if(calibTab==='ok') return diff > 90;
+    return true;
+  });
+  list.sort((a,b) => {
+    const da = a.next_calibration_date ? new Date(a.next_calibration_date) : new Date('9999-12-31');
+    const db = b.next_calibration_date ? new Date(b.next_calibration_date) : new Date('9999-12-31');
+    return da - db;
+  });
+  const tbody = document.getElementById('calibTable');
+  if(list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">해당하는 장비 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(e => {
+    let ddayHtml='-', ddayCls='dday-over';
+    if(e.next_calibration_date) {
+      const d = new Date(e.next_calibration_date); d.setHours(0,0,0,0);
+      const diff = Math.floor((d-today)/86400000);
+      ddayCls = diff<0?'dday-danger':diff<=30?'dday-warn':diff<=90?'dday-warn':'dday-ok';
+      ddayHtml = diff<0?`만료 D+${Math.abs(diff)}`:diff===0?'D-Day':`D-${diff}`;
+    }
+    return `<tr>
+      <td>${e.equipment_id||'-'}</td>
+      <td>${e.name||'-'}</td>
+      <td>${e.location||'-'}</td>
+      <td>${e.calibration_date||'-'}</td>
+      <td>${e.next_calibration_date||'-'}</td>
+      <td>${e.calibration_cycle||'-'}</td>
+      <td>${e.calibration_agency||'-'}</td>
+      <td class="${ddayCls}">${ddayHtml}</td>
+      <td>${badgeHTML(e.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// 다이얼로그 (오버레이)
+// ============================================================
+function showDialog(title, body, footer) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = body;
+  document.getElementById('dialogFooter').innerHTML = footer;
+  const ov = document.getElementById('overlay');
+  ov.style.cssText = 'display:flex !important';
+}
+
+function closeDialog() {
+  const ov = document.getElementById('overlay');
+  ov.style.cssText = 'display:none !important';
+}
+
+function overlayClickClose(e) {
+  if(e.target === document.getElementById('overlay')) closeDialog();
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') closeDialog();
+});
+
+// ============================================================
+// 토스트
+// ============================================================
+function toast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ============================================================
+// 비밀번호 잠금
+// ============================================================
+const ADMIN_PASSWORD = 'est1234';
+
+function checkPassword() {
+  const input = document.getElementById('pwInput').value;
+  const errEl = document.getElementById('pwError');
+  if (input === ADMIN_PASSWORD) {
+    document.getElementById('lockScreen').style.display = 'none';
+    sessionStorage.setItem('adminAuth', 'true');
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').style.borderColor = '#ef4444';
+    setTimeout(() => {
+      errEl.style.display = 'none';
+      document.getElementById('pwInput').style.borderColor = '#e2e8f0';
+    }, 2500);
+  }
+}
+
+function togglePw() {
+  const inp = document.getElementById('pwInput');
+  const icon = document.getElementById('pwEyeIcon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    inp.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+
+// 이미 인증된 경우 잠금 해제
+if (sessionStorage.getItem('adminAuth') === 'true') {
+  document.getElementById('lockScreen').style.display = 'none';
+}
+
+// 초기 페이지 표시 설정
+// ============================================================
+// CSS .page { display:none!important } 이므로 inline style로 override
+document.getElementById('page-dashboard').style.setProperty('display','block','important');
+// 오버레이 초기 강제 숨김 (CSS display:none 위에 inline으로 한번 더)
+document.getElementById('overlay').style.cssText = 'display:none !important';
+</script>
+</body>
+</html>
