@@ -179,7 +179,35 @@ tr:hover td{background:#f8fafc}
 </style>
 </head>
 <body>
-<div id="app">
+<!-- 비밀번호 잠금 화면 -->
+<div id="lockScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);z-index:99999;display:flex;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 25px 60px rgba(0,0,0,0.4);text-align:center">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:#fff">
+      <i class="fas fa-lock"></i>
+    </div>
+    <div style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:6px">장비 관리 시스템</div>
+    <div style="font-size:14px;color:#64748b;margin-bottom:28px">관리자 전용 페이지입니다</div>
+    <div style="position:relative;margin-bottom:16px">
+      <input type="password" id="pwInput" placeholder="비밀번호를 입력하세요"
+        style="width:100%;padding:14px 48px 14px 16px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;outline:none;transition:border 0.2s"
+        onfocus="this.style.borderColor='#3b82f6'"
+        onblur="this.style.borderColor='#e2e8f0'"
+        onkeydown="if(event.key==='Enter')checkPassword()">
+      <button onclick="togglePw()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px"><i class="fas fa-eye" id="pwEyeIcon"></i></button>
+    </div>
+    <div id="pwError" style="color:#ef4444;font-size:13px;margin-bottom:12px;display:none"><i class="fas fa-exclamation-circle"></i> 비밀번호가 올바르지 않습니다</div>
+    <button onclick="checkPassword()"
+      style="width:100%;padding:14px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity 0.15s"
+      onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+      <i class="fas fa-sign-in-alt"></i> 로그인
+    </button>
+    <div style="margin-top:20px;padding-top:20px;border-top:1px solid #f1f5f9">
+      <a href="staff.html" style="font-size:13px;color:#64748b;text-decoration:none"><i class="fas fa-eye"></i> 직원용 조회 페이지로 이동</a>
+    </div>
+  </div>
+</div>
+
+
   <!-- 사이드바 -->
   <div id="sidebar">
     <div class="logo"><i class="fas fa-tools"></i>장비 관리 시스템</div>
@@ -535,7 +563,7 @@ function renderTable() {
         const diff = Math.floor((d-today)/86400000);
         const cls = diff<0?'dday-danger':diff<=30?'dday-warn':'dday-ok';
         const txt = diff<0?`만료 D+${Math.abs(diff)}`:diff===0?'D-Day':`D-${diff}`;
-        ddayHtml = `<span class="${cls}">${e.next_calibration_date} (${txt})</span>`;
+        ddayHtml = `<span class="${cls}">${e.next_calibration_date}<br><small>${txt}</small></span>`;
       }
       const thumbHtml = e.photo
         ? `<img class="thumb" src="${e.photo}" alt="장비사진">`
@@ -1229,7 +1257,45 @@ function toast(msg, type='info') {
 }
 
 // ============================================================
-// 초기 페이지 표시 설정 - style.display로 직접 제어
+// 비밀번호 잠금
+// ============================================================
+const ADMIN_PASSWORD = 'est1234';
+
+function checkPassword() {
+  const input = document.getElementById('pwInput').value;
+  const errEl = document.getElementById('pwError');
+  if (input === ADMIN_PASSWORD) {
+    document.getElementById('lockScreen').style.display = 'none';
+    sessionStorage.setItem('adminAuth', 'true');
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').style.borderColor = '#ef4444';
+    setTimeout(() => {
+      errEl.style.display = 'none';
+      document.getElementById('pwInput').style.borderColor = '#e2e8f0';
+    }, 2500);
+  }
+}
+
+function togglePw() {
+  const inp = document.getElementById('pwInput');
+  const icon = document.getElementById('pwEyeIcon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    inp.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+
+// 이미 인증된 경우 잠금 해제
+if (sessionStorage.getItem('adminAuth') === 'true') {
+  document.getElementById('lockScreen').style.display = 'none';
+}
+
+// 초기 페이지 표시 설정
 // ============================================================
 // CSS .page { display:none!important } 이므로 inline style로 override
 document.getElementById('page-dashboard').style.setProperty('display','block','important');
